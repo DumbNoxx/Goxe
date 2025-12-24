@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/DumbNoxx/Goxe/internal/pipelines"
@@ -11,11 +12,11 @@ import (
 
 // This function receives the map of logs created by the processor
 func Console(logs map[string]map[string]*pipelines.LogStats, mu *sync.Mutex) {
-	fmt.Println("\tPartial Report")
+	fmt.Println(strings.ToUpper("\tPartial Report"))
 	fmt.Println("----------------------------------")
 	mu.Lock()
 	for key, messages := range logs {
-		fmt.Printf("ORIGEN: %s\n", key)
+		fmt.Printf("ORIGEN: [%s]\n", key)
 		for msg, stats := range messages {
 			switch {
 			case stats.Count >= logslevel.CRITIC:
