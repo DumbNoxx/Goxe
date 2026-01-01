@@ -10,4 +10,11 @@ import (
 var (
 	reStatus = regexp.MustCompile(filters.PatternsLogLevel)
 	reDates  = regexp.MustCompile(strings.Join(filters.PatternsDate, "|"))
+	reIpLogs = regexp.MustCompile(filters.PatternIpLogs)
 )
+
+func SafeWord(word string) *regexp.Regexp {
+	pattern := regexp.QuoteMeta(word) + filters.PatternsIdLogs
+	println(pattern)
+	return regexp.MustCompile(pattern)
+}

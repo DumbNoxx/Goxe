@@ -13,7 +13,7 @@ const (
 	PORT string = ":5642"
 )
 
-func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup) {
+func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup, idlog string) {
 	defer wg.Done()
 
 	addr, err := net.ResolveUDPAddr("udp", PORT)
@@ -47,6 +47,7 @@ func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup) {
 			Source:    host,
 			Content:   message,
 			Timestamp: time.Now(),
+			IdLog:     idlog,
 		}
 
 		pipe <- dates

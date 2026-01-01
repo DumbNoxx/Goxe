@@ -27,7 +27,7 @@ func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup) {
 			if !ok {
 				return
 			}
-			sanitizadedText = cluster.Cluster(text.Content)
+			sanitizadedText = cluster.Cluster(text.Content, text.IdLog)
 			if len(sanitizadedText) < 3 {
 				continue
 			}
