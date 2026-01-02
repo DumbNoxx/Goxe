@@ -14,7 +14,5 @@ var (
 )
 
 func SafeWord(word string) *regexp.Regexp {
-	pattern := regexp.QuoteMeta(word) + filters.PatternsIdLogs
-	println(pattern)
-	return regexp.MustCompile(pattern)
+	return regexp.MustCompile(regexp.QuoteMeta(word) + filters.PatternsIdLogs)
 }
