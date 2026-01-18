@@ -74,4 +74,4 @@ the system is optimized to handle high log volumes with minimal latency.
 
 ## license
 
-licensed under the apache license, version 2.0. see the [license file](license) for details.
+licensed under the apache license, version 2.0. see the [license file](LICENSE) for details.
