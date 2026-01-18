@@ -59,12 +59,12 @@ the system is optimized to handle high log volumes with minimal latency.
 * log normalization and filtering
 * ascii beautification
 * timestamp and date parsing
+* graceful shutdown and signal handling
+* similarity clustering (group near-identical messages)
 * syslog/udp network ingestion
 
-### planned
+### planned before V1
 
-* similarity clustering (group near-identical messages)
-* graceful shutdown and signal handling
 * configuration file support
 * additional ingestion backends
 

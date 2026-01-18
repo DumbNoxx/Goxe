@@ -12,7 +12,6 @@ import (
 
 // Function to read the received information
 func IngestorData(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup, idLog string) {
-	defer wg.Done()
 
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Println("enter text (ctrl + c to exit)")

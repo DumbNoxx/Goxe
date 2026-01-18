@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,20 +12,24 @@ import (
 
 var (
 	logs = make(map[string]map[string]*pipelines.LogStats)
-	mu   sync.Mutex
 )
 
 // Main function that processes the received information and sends it to their corresponding functions
-func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup) {
+func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	var sanitizadedText string
+	var isFinal bool = false
 
 	for {
 		select {
 		case text, ok := <-pipe:
 			if !ok {
+				isFinal = true
+				fmt.Println("\n[System] System terminated last report")
+				exporter.Console(logs, mu, isFinal)
+				isFinal = false
 				return
 			}
 			sanitizadedText = cluster.Cluster(text.Content, text.IdLog)
@@ -48,7 +53,7 @@ func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup) {
 			logs[text.Source][sanitizadedText].LastSeen = text.Timestamp
 			mu.Unlock()
 		case <-ticker.C:
-			exporter.Console(logs, &mu)
+			exporter.Console(logs, mu, isFinal)
 		}
 	}
 

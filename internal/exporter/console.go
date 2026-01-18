@@ -11,9 +11,13 @@ import (
 )
 
 // This function receives the map of logs created by the processor
-func Console(logs map[string]map[string]*pipelines.LogStats, mu *sync.Mutex) {
+func Console(logs map[string]map[string]*pipelines.LogStats, mu *sync.Mutex, isFinal bool) {
 
-	fmt.Println(strings.ToUpper("\tPartial Report"))
+	if isFinal {
+		fmt.Println(strings.ToUpper("\tFinal Report"))
+	} else {
+		fmt.Println(strings.ToUpper("\tPartial Report"))
+	}
 	fmt.Println("----------------------------------")
 
 	mu.Lock()
@@ -34,11 +38,11 @@ func Console(logs map[string]map[string]*pipelines.LogStats, mu *sync.Mutex) {
 		for msg, stats := range messages {
 			switch {
 			case stats.Count >= logslevel.CRITIC:
-				fmt.Printf("- %s%s (x%d)%s -- (Last seen %v)\n", colors.RED, msg, stats.Count, colors.RESET, stats.LastSeen.Format("15:04:05"))
+				fmt.Printf("-%s [%d] %s %s -- (Last seen %v)\n", colors.RED, stats.Count, msg, colors.RESET, stats.LastSeen.Format("15:04:05"))
 			case stats.Count >= logslevel.NORMAL:
-				fmt.Printf("- %s%s (x%d)%s -- (Last seen %v)\n", colors.YELLOW, msg, stats.Count, colors.RESET, stats.LastSeen.Format("15:04:05"))
+				fmt.Printf("-%s [%d] %s %s -- (Last seen %v)\n", colors.YELLOW, stats.Count, msg, colors.RESET, stats.LastSeen.Format("15:04:05"))
 			case stats.Count >= logslevel.SAVED:
-				fmt.Printf("- %s%s (x%d)%s -- (Last seen %v)\n", colors.GREEN, msg, stats.Count, colors.RESET, stats.LastSeen.Format("15:04:05"))
+				fmt.Printf("-%s [%d] %s %s -- (Last seen %v)\n", colors.GREEN, stats.Count, msg, colors.RESET, stats.LastSeen.Format("15:04:05"))
 			}
 		}
 	}

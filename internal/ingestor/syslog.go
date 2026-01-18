@@ -14,7 +14,6 @@ const (
 )
 
 func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup, idlog string) {
-	defer wg.Done()
 
 	addr, err := net.ResolveUDPAddr("udp", PORT)
 	if err != nil {
@@ -28,7 +27,7 @@ func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup, idlog string) {
 	}
 	defer conn.Close()
 
-	fmt.Printf("Server listening on http://localhost%s\n", PORT)
+	fmt.Printf("Server listening on port %s\n", PORT)
 
 	buffer := make([]byte, 1024)
 

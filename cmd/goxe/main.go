@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
 
@@ -14,6 +16,7 @@ func main() {
 	var wg sync.WaitGroup
 	pipe := make(chan pipelines.LogEntry)
 	var idLog string
+	var mu sync.Mutex
 
 	fmt.Println("Antes de continuar, por favor ¿Puedes proporcionar el IdLog de tu servidor?")
 	fmt.Println("Si tu servidor no tiene id log escribe 9")
@@ -36,12 +39,15 @@ func main() {
 		break
 	}
 
-	wg.Add(3)
-	go processor.Clean(pipe, &wg)
-	go ingestor.IngestorData(pipe, &wg, idLog)
+	wg.Add(1)
+	go processor.Clean(pipe, &wg, &mu)
 	go ingestor.Udp(pipe, &wg, idLog)
 
-	wg.Wait()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
 	close(pipe)
+
+	wg.Wait()
 
 }
