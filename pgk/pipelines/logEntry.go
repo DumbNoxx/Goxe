@@ -9,9 +9,3 @@ type LogEntry struct {
 	Level     string
 	IdLog     string
 }
-
-type LogStats struct {
-	Count    int
-	LastSeen time.Time
-	Level    string
-}

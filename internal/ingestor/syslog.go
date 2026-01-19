@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DumbNoxx/Goxe/internal/pipelines"
+	"github.com/DumbNoxx/Goxe/pgk/pipelines"
 )
 
 const (

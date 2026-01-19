@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/DumbNoxx/Goxe/internal/exporter"
-	"github.com/DumbNoxx/Goxe/internal/pipelines"
 	"github.com/DumbNoxx/Goxe/internal/processor/cluster"
+	"github.com/DumbNoxx/Goxe/pgk/pipelines"
 )
 
 var (

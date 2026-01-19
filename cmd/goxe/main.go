@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/DumbNoxx/Goxe/internal/ingestor"
-	"github.com/DumbNoxx/Goxe/internal/pipelines"
 	"github.com/DumbNoxx/Goxe/internal/processor"
+	"github.com/DumbNoxx/Goxe/pgk/pipelines"
 )
 
 func main() {
