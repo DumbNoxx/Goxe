@@ -62,14 +62,16 @@ the system is optimized to handle high log volumes with minimal latency.
 * graceful shutdown and signal handling
 * similarity clustering (group near-identical messages)
 * syslog/udp network ingestion
+* configuration file support
 
 ### v1 sprint 
 
-* configuration file support
-* additional ingestion backends
 * output log file
 * notification dispatch pipeline
 * event burst detection
+
+### planned future
+* additional ingestion backends
 
 ## maintainers
 

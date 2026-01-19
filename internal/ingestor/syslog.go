@@ -3,17 +3,19 @@ package ingestor
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/DumbNoxx/Goxe/internal/options"
 	"github.com/DumbNoxx/Goxe/pkg/pipelines"
 )
 
-const (
-	PORT string = ":5642"
+var (
+	PORT string = ":" + strconv.Itoa(options.Config.Port)
 )
 
-func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup, idlog string) {
+func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup) {
 
 	addr, err := net.ResolveUDPAddr("udp", PORT)
 	if err != nil {
@@ -46,7 +48,7 @@ func Udp(pipe chan<- pipelines.LogEntry, wg *sync.WaitGroup, idlog string) {
 			Source:    host,
 			Content:   message,
 			Timestamp: time.Now(),
-			IdLog:     idlog,
+			IdLog:     options.Config.IdLog,
 		}
 
 		pipe <- dates
