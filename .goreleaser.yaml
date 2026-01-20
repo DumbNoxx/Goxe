@@ -1,4 +1,5 @@
 builds:
+  - main: ./cmd/goxe/
   - env: [CGO_ENABLED=0]
     goos: [linux, windows, darwin]
     goarch: [amd64, arm64]
