@@ -29,5 +29,5 @@ func Sanitizer(text string, idLog string) string {
 		}
 	}
 
-	return extractLevelUpper(textSanitize) + cleanText
+	return ExtractLevelUpper(textSanitize) + cleanText
 }

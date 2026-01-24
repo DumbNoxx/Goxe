@@ -2,19 +2,27 @@ package processor
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/DumbNoxx/Goxe/internal/exporter"
 	"github.com/DumbNoxx/Goxe/internal/options"
 	"github.com/DumbNoxx/Goxe/internal/processor/cluster"
+	"github.com/DumbNoxx/Goxe/internal/processor/sanitizer"
 	"github.com/DumbNoxx/Goxe/internal/utils"
 	"github.com/DumbNoxx/Goxe/pkg/pipelines"
 )
 
 var (
-	logs = make(map[string]map[string]*pipelines.LogStats)
+	logs      = make(map[string]map[string]*pipelines.LogStats)
+	logsBurst = make(map[string]*pipelines.LogBurst)
 )
+
+var errs = []string{
+	"ERROR",
+	"CRITICAL",
+}
 
 // Main function that processes the received information and sends it to their corresponding functions
 func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
@@ -54,8 +62,16 @@ func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 					LastSeen:  text.Timestamp,
 					Level:     text.Level,
 				}
-
 			}
+			word := sanitizer.ExtractLevelUpper(text.Content)
+			if logsBurst[word] == nil {
+				logsBurst[word] = &pipelines.LogBurst{
+					Count:       0,
+					Category:    word,
+					WindowStart: time.Now(),
+				}
+			}
+			burstDetection(logsBurst, word)
 			logs[text.Source][sanitizadedText].Count++
 			logs[text.Source][sanitizadedText].LastSeen = text.Timestamp
 			mu.Unlock()
@@ -71,10 +87,48 @@ func Clean(pipe <-chan pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 
 			mu.Lock()
 			logsToFlush := logs
-			logs = make(map[string]map[string]*pipelines.LogStats)
+			clear(logs)
 			mu.Unlock()
 			exporter.File(logsToFlush)
 		}
 	}
 
+}
+
+func burstDetection(logsBurst map[string]*pipelines.LogBurst, word string) {
+	limitBreak := time.Second * 10
+	global, ok := logsBurst["AGGREGATE_TRAFFIC"]
+
+	if !ok {
+		global = &pipelines.LogBurst{
+			Count:       0,
+			Category:    "AGGREGATE_TRAFFIC",
+			WindowStart: time.Now(),
+		}
+		logsBurst["AGGREGATE_TRAFFIC"] = global
+	}
+
+	global.Count++
+	elapsedGlobal := time.Since(global.WindowStart)
+	if global.Count > 100 && elapsedGlobal <= limitBreak {
+		fmt.Println("DDos detected")
+	}
+	if elapsedGlobal > limitBreak {
+		global.Count = 1
+		global.WindowStart = time.Now()
+	}
+
+	if !slices.Contains(errs, word) {
+		return
+	}
+
+	elapsed := time.Since(logsBurst[word].WindowStart)
+	logsBurst[word].Count++
+	if logsBurst[word].Count > 10 && elapsed <= limitBreak {
+		fmt.Println("Critical System Errors")
+	}
+	if elapsed > limitBreak {
+		logsBurst[word].WindowStart = time.Now()
+		logsBurst[word].Count = 1
+	}
 }

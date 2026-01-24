@@ -2,7 +2,7 @@ package sanitizer
 
 import "strings"
 
-func extractLevelUpper(log string) string {
+func ExtractLevelUpper(log string) string {
 	status := reStatus.FindString(log)
 
 	if status == "" {
