@@ -21,17 +21,16 @@ import (
 var (
 	logs      = make(map[string]map[string]*pipelines.LogStats, 100)
 	logsBurst = make(map[string]*pipelines.LogBurst, 100)
+	errs      = []string{
+		"ERROR",
+		"CRITICAL",
+	}
 )
-
-var errs = []string{
-	"ERROR",
-	"CRITICAL",
-}
 
 // Main function that processes the received information and sends it to their corresponding functions
 func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(60 * time.Minute)
 	defer ticker.Stop()
 	tickerReportFile := time.NewTicker(utils.UserConfigHour())
 	defer tickerReportFile.Stop()
@@ -66,16 +65,15 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 			if logs[text.Source] == nil {
 				logs[text.Source] = make(map[string]*pipelines.LogStats)
 			}
+			word := sanitizer.ExtractLevelUpper(text.Content)
 			if logs[text.Source][sanitizadedText] == nil {
-
 				logs[text.Source][sanitizadedText] = &pipelines.LogStats{
 					Count:     0,
 					FirstSeen: text.Timestamp,
 					LastSeen:  text.Timestamp,
-					Level:     text.Level,
+					Level:     word,
 				}
 			}
-			word := sanitizer.ExtractLevelUpper(text.Content)
 			if logsBurst[word] == nil {
 				logsBurst[word] = &pipelines.LogBurst{
 					Count:       0,
@@ -98,7 +96,13 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 			if len(logs) <= 0 {
 				continue
 			}
-			exporter.Console(logs, mu, false)
+			logsToFlush := logs
+			exporter.Console(logsToFlush, mu, false)
+			err := exporter.ShipLogs(logsToFlush)
+			if err != nil {
+				log.Print("Error sent")
+			}
+			clear(logs)
 		case <-tickerReportFile.C:
 			if !options.Config.GenerateLogsOptions.GenerateLogsFile {
 				continue

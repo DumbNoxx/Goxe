@@ -7,6 +7,7 @@ type Config struct {
 	GenerateLogsOptions   GenerateLogsOptions   `json:"generateLogsOptions"`
 	WebHookUrls           []string              `json:"webhookUrls"`
 	BurstDetectionOptions BurstDetectionOptions `json:"bursDetectionOptions"`
+	ShipperConfig         ShipperConfig         `json:"shipper"`
 }
 
 type GenerateLogsOptions struct {
@@ -16,4 +17,10 @@ type GenerateLogsOptions struct {
 
 type BurstDetectionOptions struct {
 	LimitBreak int `json:"limitBreak"`
+}
+
+type ShipperConfig struct {
+	Address       string `json:"address"`
+	FlushInterval int    `json:"flushInterval"`
+	Protocol      string `json:"protocol"`
 }

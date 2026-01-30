@@ -58,40 +58,53 @@ origin: [::1]
 * firstseen field to track initial occurrence
 * event burst detection
 * notification dispatch pipeline
+* remote syslog/network shipping support
+
 
 ## usage
 
-- default behavior:
+- **default behavior**:
   - goxe listens on udp port `1729` by default (configurable).
-  - on first run the tool creates a default config.json in the user's config directory:
-    - linux: `$XDG_CONFIG_HOME` or `$HOME/.config` → `goxe/config.json`
-    - macos: `~/Library/Application Support/goxe/config.json`
-    - windows: `%APPDATA%\goxe\config.json`
+  - on first run the tool creates a default `config.json` in the user's config directory:
+    - **linux**: `$XDG_CONFIG_HOME` or `$HOME/.config` → `goxe/config.json`
+    - **macos**: `~/Library/Application Support/goxe/config.json`
+    - **windows**: `%APPDATA%\goxe\config.json`
   - the app reads `options.Config` from that file; the defaults are:
     - `port`: 1729 — udp port to listen on
     - `idLog`: hostname — identifier added/removed from logs
-    - `patternsWords`: [] — list of ignored words
+    - `pattenersWords`: [] — list of ignored words
     - `generateLogsOptions.generateLogsFile`: false — write periodic file report
     - `generateLogsOptions.hour`: "00:00:00" — scheduled hour for file generation
-    - `webHookUrls`: [] — webhooks to call when alerts fire
-    - `burstDetectionOptions.limitBreak`: 10 — burst detection threshold (seconds × count)
-  - to change behavior edit the `config.json` file and restart goxe or use the upcoming config reload path.
+    - `webhookUrls`: [] — webhooks to call when alerts fire
+    - `bursDetectionOptions.limitBreak`: 10 — burst detection threshold (seconds × count)
+    - `shipper.address`: "" — remote address to ship processed logs (e.g., "127.0.0.1:5000")
+    - `shipper.flushInterval`: 30 — interval in seconds between network transmissions
+    - `shipper.protocol`: "tcp" — transmission protocol (tcp, udp, etc. via [net.Dial](https://pkg.go.dev))
+  - **hot reloading**: goxe monitors the `config.json` file in real-time. Any changes saved to the file are automatically applied without requiring a restart.
 
-- routing system logs to goxe:
-  - configure your system logger (rsyslog, syslog-ng, journald-forwarder, etc.) to forward or send logs to `udp://<host>:1729` (replace host/port as needed).
-  - see your os documentation for forwarding syslog to a remote udp port (linux, macos, windows).
+- **routing and shipping**:
+  - **ingestion**: configure your system logger (rsyslog, syslog-ng, etc.) or any application to forward logs to `udp://<host>:1729`.
+  - **remote shipping**: enable `shipper.address` to forward processed log aggregates to an external service. Goxe will batch and send statistics in JSON format:
+    ```json
+    {
+      "origin": "web-server-01",
+      "data": [
+        {
+          "count": 42,
+          "firstSeen": "2024-03-20T10:00:00Z",
+          "lastSeen": "2024-03-20T10:05:00Z",
+          "message": "Invalid password attempt for user admin"
+        }
+      ]
+    }
+    ```
 
-- app integration:
-  - any app that can send syslog/udp can forward logs to goxe (host:1729 by default).
-  - examples (conceptual):
-    - node: use a syslog/bunyan/winston syslog transport to forward logs via udp to goxe.
-    - go: use the stdlib net/dial udp or a syslog client to send messages to goxe.
-  - alternatively, forward your system logger to `udp://<host>:1729`.
-  - note: docker support is not available yet — running goxe in a container is not officially supported in this release.
-
-- limitations:
-  - v1.x does not yet forward processed aggregates to an external log service; forwarding/shipper integrations are planned for later releases.
-  - content is currently processed as strings; for the highest-performance zero-copy pipelines consider using the buffer/raw-field options (internal optimizations applied in this release).
+- **app integration**:
+  - **system-wide**: see your OS documentation for forwarding syslog to a remote UDP port (Linux, macOS, Windows).
+  - **custom apps**: any app capable of sending UDP/Syslog packets can use Goxe as a target:
+    - **node**: use a syslog/bunyan/winston transport to forward logs.
+    - **go**: use the [std net](https://pkg.go.dev/net) package to dial UDP.
+  - **note**: docker support is not available yet running goxe in a container is not officially supported in this release.
 
 ## testing
 
