@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,16 @@ import (
 	"github.com/DumbNoxx/Goxe/internal/processor"
 	"github.com/DumbNoxx/Goxe/pkg/pipelines"
 )
+
+var (
+	versionFlag *bool
+	version     = ""
+)
+
+func init() {
+	versionFlag = flag.Bool("v", false, "")
+
+}
 
 func viewConfig() {
 	dir, _ := os.UserConfigDir()
@@ -39,6 +50,13 @@ func viewConfig() {
 }
 
 func main() {
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
 	var wg sync.WaitGroup
 	pipe := make(chan *pipelines.LogEntry, 100)
 	var mu sync.Mutex

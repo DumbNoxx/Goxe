@@ -21,5 +21,10 @@ func configDefault() options.Config {
 		BurstDetectionOptions: options.BurstDetectionOptions{
 			LimitBreak: 10,
 		},
+		ShipperConfig: options.ShipperConfig{
+			Address:       "",
+			FlushInterval: 30,
+			Protocol:      "tcp",
+		},
 	}
 }
