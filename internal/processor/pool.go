@@ -76,9 +76,11 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 			}
 			if logsBurst[word] == nil {
 				logsBurst[word] = &pipelines.LogBurst{
-					Count:       0,
-					Category:    word,
-					WindowStart: time.Now(),
+					Count:         0,
+					Category:      word,
+					WindowStart:   time.Now(),
+					AlertsSent:    0,
+					LastAlertTime: time.Time{},
 				}
 			}
 			burstDetection(logsBurst, word)
@@ -120,70 +122,175 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 
 func burstDetection(logsBurst map[string]*pipelines.LogBurst, word string) {
 	limitBreak := time.Second * time.Duration(options.Config.BurstDetectionOptions.LimitBreak)
+	if slices.Contains(errs, word) {
+		stats := logsBurst[word]
+		elapsed := time.Since(logsBurst[word].WindowStart)
+		stats.Count++
+		if elapsed > limitBreak {
+			logsBurst[word].WindowStart = time.Now()
+			logsBurst[word].Count = 1
+			logsBurst[word].AlertsSent = 0
+			logsBurst[word].LastAlertTime = time.Time{}
+			goto CheckGlobal
+		}
+
+		if stats.Count <= 10 {
+			goto CheckGlobal
+		}
+
+		if stats.AlertsSent >= 10 || time.Since(logsBurst[word].LastAlertTime) < 5*time.Second {
+			return
+		}
+
+		handleWebhook(word, logsBurst[word])
+		logsBurst[word].LastAlertTime = time.Now()
+		logsBurst[word].AlertsSent++
+
+		return
+	}
+CheckGlobal:
 	global, ok := logsBurst["AGGREGATE_TRAFFIC"]
 
 	if !ok {
 		global = &pipelines.LogBurst{
-			Count:       0,
-			Category:    "AGGREGATE_TRAFFIC",
-			WindowStart: time.Now(),
+			Count:         0,
+			Category:      "AGGREGATE_TRAFFIC",
+			WindowStart:   time.Now(),
+			LastAlertTime: time.Time{},
+			AlertsSent:    0,
 		}
 		logsBurst["AGGREGATE_TRAFFIC"] = global
 	}
 
 	global.Count++
 	elapsedGlobal := time.Since(global.WindowStart)
-	if global.Count > 100 && elapsedGlobal <= limitBreak {
-		handleWebhook("DDos detected")
-	}
-	if elapsedGlobal > limitBreak {
-		global.Count = 1
-		global.WindowStart = time.Now()
-	}
 
-	if !slices.Contains(errs, word) {
+	if elapsedGlobal > limitBreak {
+		global.Count = 0
+		global.WindowStart = time.Now()
+		global.AlertsSent = 1
+		global.LastAlertTime = time.Time{}
 		return
 	}
 
-	elapsed := time.Since(logsBurst[word].WindowStart)
-	logsBurst[word].Count++
-	if logsBurst[word].Count > 10 && elapsed <= limitBreak {
-		handleWebhook("Critical System Errors")
+	if global.Count < 100 {
+		return
 	}
-	if elapsed > limitBreak {
-		logsBurst[word].WindowStart = time.Now()
-		logsBurst[word].Count = 1
+
+	if global.AlertsSent >= 10 || time.Since(global.LastAlertTime) < 5*time.Second {
+		return
 	}
+
+	handleWebhook("AGGREGATE_TRAFFIC", global)
+	global.LastAlertTime = time.Now()
+	global.AlertsSent++
 }
 
-func handleWebhook(text string) {
+func handleWebhook(msg string, stats *pipelines.LogBurst) {
 	var (
 		data []byte
 		err  error
 	)
-
 	for _, url := range options.Config.WebHookUrls {
-
 		if strings.HasPrefix(url, "https://discord.com") {
-			message := pkg.WebhookDiscord{
-				Content: text,
+			var DataSentWebhook pkg.WebhookDiscord
+			var log = pkg.OptionsEmbedsDiscord{
+				Title:       msg,
+				Description: "The server's acting up.",
+				Color:       16777215,
+				Author: pkg.AuthorOptionsEmbedsDiscord{
+					Name:    "Goxe",
+					Url:     "https://github.com/DumbNoxx/Goxe",
+					IconUrl: "https://raw.githubusercontent.com/DumbNoxx/Dotfiles-For-Humans/refs/heads/main/src/assets/img/goxe.png",
+				},
+				Fields: []pkg.FieldEmbedsDiscord{
+					{
+						Name:   "Errors",
+						Value:  "```Check the server, it's overheating.```",
+						Inline: false,
+					},
+					{
+						Name:   "Category",
+						Value:  stats.Category,
+						Inline: true,
+					},
+					{
+						Name:   "Start Time",
+						Value:  stats.WindowStart.Format("02-01-2006, 15:04"),
+						Inline: true,
+					},
+					{
+						Name:   "Counts",
+						Value:  fmt.Sprintf("%d", stats.Count),
+						Inline: true,
+					},
+				},
+				Footer: pkg.FooterEmbedsDiscord{
+					Text: "Your Log Collector ❤️",
+				},
+				Timestamp: time.Now(),
 			}
-			data, err = json.Marshal(message)
+			DataSentWebhook.Embeds = append(DataSentWebhook.Embeds, log)
+			data, err = json.Marshal(DataSentWebhook)
 			sentData(data, err, url)
 		}
 
 		if strings.HasPrefix(url, "https://hooks.slack.com") {
-			message := pkg.WebhookSlack{
-				Text: text,
+			var headerLog = pkg.OptionsBlockSlack{
+				Type: "header",
+				Text: &pkg.OptionsTextMrkSlack{
+					Type:  "plain_text",
+					Text:  msg,
+					Emoji: true,
+				},
 			}
-			data, err = json.Marshal(message)
+
+			var mrkLog = pkg.OptionsBlockSlack{
+				Type: "section",
+				Text: &pkg.OptionsTextMrkSlack{
+					Type: "mrkdwn",
+					Text: fmt.Sprintf(
+						"```Check the server, it's overheating.\nCount: %d - Start Time: %v - Category: %s```",
+						stats.Count,
+						stats.WindowStart.Format("02-01-2006, 15:04"),
+						stats.Category,
+					),
+				},
+			}
+
+			var divider = pkg.OptionsBlockSlack{
+				Type: "divider",
+			}
+
+			var footerLog = pkg.OptionsBlockSlack{
+				Type: "context",
+				Elements: []pkg.OptionsElementsBlockSlack{
+					{
+						Type:  "plain_text",
+						Text:  "Author: Goxe",
+						Emoji: true,
+					},
+				},
+			}
+
+			payload := pkg.WebhookSlack{
+				Blocks: []pkg.OptionsBlockSlack{
+					headerLog,
+					mrkLog,
+					divider,
+					footerLog,
+				},
+			}
+
+			data, err = json.Marshal(payload)
+			fmt.Print(string(data))
 			sentData(data, err, url)
 		}
 	}
 }
 
 func sentData(data []byte, err error, url string) {
-	options.SentWebhook(url, []byte(data))
+	options.SentWebhook(url, data)
 	if err != nil {
 		log.Print("Convert json fail")
 		return
