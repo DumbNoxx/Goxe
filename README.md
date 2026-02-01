@@ -1,5 +1,7 @@
 # goxe
 
+![Made with VHS](https://vhs.charm.sh/vhs-2EIkpos0Gy4aJ2DqpkrO8l.gif)
+
 reduce large volumes of repetitive logs into compact, readable aggregates.
 
 goxe is a high-performance log reduction tool written in go. it ingests logs (currently via syslog/udp),
