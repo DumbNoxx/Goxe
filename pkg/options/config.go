@@ -16,7 +16,7 @@ type GenerateLogsOptions struct {
 }
 
 type BurstDetectionOptions struct {
-	LimitBreak int `json:"limitBreak"`
+	LimitBreak float64 `json:"limitBreak"`
 }
 
 type ShipperConfig struct {
