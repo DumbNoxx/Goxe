@@ -1,6 +1,6 @@
 # goxe
 
-![Made with VHS](https://vhs.charm.sh/vhs-2Bt5bF1gH5nLx6TkTpOMHR.gif)
+![Made with VHS](https://vhs.charm.sh/vhs-5h1jmrUc7TMULoD2Mo48Ci.gif)
 
 reduce large volumes of repetitive logs into compact, readable aggregates.
 
