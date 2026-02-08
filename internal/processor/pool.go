@@ -25,12 +25,13 @@ var (
 		"ERROR",
 		"CRITICAL",
 	}
+	timeReport = time.Duration(options.Config.ReportInterval * float64(time.Minute))
 )
 
 // Main function that processes the received information and sends it to their corresponding functions
 func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
-	ticker := time.NewTicker(60 * time.Minute)
+	ticker := time.NewTicker(timeReport)
 	defer ticker.Stop()
 	tickerReportFile := time.NewTicker(utils.UserConfigHour())
 	defer tickerReportFile.Stop()
@@ -121,7 +122,7 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 }
 
 func burstDetection(logsBurst map[string]*pipelines.LogBurst, word string) {
-	limitBreak := time.Second * time.Duration(options.Config.BurstDetectionOptions.LimitBreak)
+	limitBreak := time.Duration(float64(time.Second) * options.Config.BurstDetectionOptions.LimitBreak)
 	if slices.Contains(errs, word) {
 		stats := logsBurst[word]
 		elapsed := time.Since(logsBurst[word].WindowStart)

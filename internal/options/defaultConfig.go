@@ -26,6 +26,7 @@ func configDefault() options.Config {
 			FlushInterval: 30,
 			Protocol:      "tcp",
 		},
-		BufferUdpSize: 4,
+		ReportInterval: 60,
+		BufferUdpSize:  4,
 	}
 }

@@ -8,6 +8,7 @@ type Config struct {
 	WebHookUrls           []string              `json:"webhookUrls"`
 	BurstDetectionOptions BurstDetectionOptions `json:"bursDetectionOptions"`
 	ShipperConfig         ShipperConfig         `json:"shipper"`
+	ReportInterval        float64               `json:"reportInterval"`
 	BufferUdpSize         int                   `json:"bufferUdpSize"`
 }
 
