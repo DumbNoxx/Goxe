@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -38,7 +39,9 @@ func getVersion() string {
 	return "vDev-build"
 }
 
-func viewConfig() {
+func viewConfig(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	dir, _ := os.UserConfigDir()
 	configPath := filepath.Join(dir, "goxe", "config.json")
 	initialStat, err := os.Stat(configPath)
@@ -48,15 +51,20 @@ func viewConfig() {
 	lastModified := initialStat.ModTime()
 
 	ticker := time.NewTicker(1 * time.Second)
-	for range ticker.C {
-		currentStat, err := os.Stat(configPath)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if currentStat.ModTime().After(lastModified) {
-			fmt.Println("Config update, reload...")
-			lastModified = currentStat.ModTime()
-			options.Config = options.ConfigFile()
+	for {
+		select {
+		case <-ticker.C:
+			currentStat, err := os.Stat(configPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if currentStat.ModTime().After(lastModified) {
+				fmt.Println("Config update, reload...")
+				lastModified = currentStat.ModTime()
+				options.Config = options.ConfigFile()
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
@@ -69,22 +77,37 @@ func main() {
 		os.Exit(0)
 	}
 
-	var wg sync.WaitGroup
+	var wgProcessor sync.WaitGroup
+	var wgProducer sync.WaitGroup
 	pipe := make(chan *pipelines.LogEntry, 100)
 	var mu sync.Mutex
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 
 	options.CacheDirGenerate()
 
-	wg.Add(1)
-	go processor.Clean(pipe, &wg, &mu)
-	go ingestor.Udp(pipe, &wg)
-	go viewConfig()
+	wgProcessor.Add(1)
+	go processor.Clean(ctx, pipe, &wgProcessor, &mu)
+	wgProducer.Add(1)
+	go ingestor.Udp(ctx, pipe, &wgProducer)
+	wgProducer.Add(1)
+	go viewConfig(ctx, &wgProducer)
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
+	<-ctx.Done()
+
+	done := make(chan struct{})
+	go func() {
+		wgProducer.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		log.Println("[System] Force closing producers...")
+	}
+
 	close(pipe)
-
-	wg.Wait()
+	wgProcessor.Wait()
 
 }

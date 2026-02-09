@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -29,7 +30,7 @@ var (
 )
 
 // Main function that processes the received information and sends it to their corresponding functions
-func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
+func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
 	ticker := time.NewTicker(timeReport)
 	defer ticker.Stop()
@@ -47,7 +48,7 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 					return
 				}
 				fmt.Println("\n[System] System terminated last report")
-				exporter.Console(logs, mu, true)
+				exporter.Console(logs, true)
 				return
 			}
 			buf := text.RawEntry
@@ -99,13 +100,15 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 			if len(logs) <= 0 {
 				continue
 			}
+			mu.Lock()
 			logsToFlush := logs
-			exporter.Console(logsToFlush, mu, false)
+			logs = make(map[string]map[string]*pipelines.LogStats, 100)
+			mu.Unlock()
+			exporter.Console(logsToFlush, false)
 			err := exporter.ShipLogs(logsToFlush)
 			if err != nil {
 				log.Print("Error sent")
 			}
-			clear(logs)
 		case <-tickerReportFile.C:
 			if !options.Config.GenerateLogsOptions.GenerateLogsFile {
 				continue
@@ -113,7 +116,7 @@ func Clean(pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) 
 
 			mu.Lock()
 			logsToFlush := logs
-			clear(logs)
+			logs = make(map[string]map[string]*pipelines.LogStats, 100)
 			mu.Unlock()
 			exporter.File(logsToFlush)
 		}
