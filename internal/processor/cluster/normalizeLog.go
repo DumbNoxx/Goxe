@@ -3,7 +3,7 @@ package cluster
 import (
 	"strings"
 
-	"github.com/DumbNoxx/Goxe/internal/processor/sanitizer"
+	"github.com/DumbNoxx/goxe/internal/processor/sanitizer"
 )
 
 func NormalizeLog(log string) string {

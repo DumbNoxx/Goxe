@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DumbNoxx/Goxe/internal/ingestor"
-	"github.com/DumbNoxx/Goxe/internal/options"
-	"github.com/DumbNoxx/Goxe/internal/processor"
-	"github.com/DumbNoxx/Goxe/pkg/pipelines"
+	"github.com/DumbNoxx/goxe/internal/ingestor"
+	"github.com/DumbNoxx/goxe/internal/options"
+	"github.com/DumbNoxx/goxe/internal/processor"
+	"github.com/DumbNoxx/goxe/pkg/pipelines"
 )
 
 var (

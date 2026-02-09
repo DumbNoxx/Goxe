@@ -3,7 +3,7 @@ package options
 import (
 	"os"
 
-	"github.com/DumbNoxx/Goxe/pkg/options"
+	"github.com/DumbNoxx/goxe/pkg/options"
 )
 
 func configDefault() options.Config {

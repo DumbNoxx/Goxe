@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DumbNoxx/Goxe/internal/exporter"
-	"github.com/DumbNoxx/Goxe/internal/options"
-	"github.com/DumbNoxx/Goxe/internal/processor/cluster"
-	"github.com/DumbNoxx/Goxe/internal/processor/sanitizer"
-	"github.com/DumbNoxx/Goxe/internal/utils"
-	pkg "github.com/DumbNoxx/Goxe/pkg/options"
-	"github.com/DumbNoxx/Goxe/pkg/pipelines"
+	"github.com/DumbNoxx/goxe/internal/exporter"
+	"github.com/DumbNoxx/goxe/internal/options"
+	"github.com/DumbNoxx/goxe/internal/processor/cluster"
+	"github.com/DumbNoxx/goxe/internal/processor/sanitizer"
+	"github.com/DumbNoxx/goxe/internal/utils"
+	pkg "github.com/DumbNoxx/goxe/pkg/options"
+	"github.com/DumbNoxx/goxe/pkg/pipelines"
 )
 
 var (

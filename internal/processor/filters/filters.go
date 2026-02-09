@@ -1,6 +1,6 @@
 package filters
 
-import "github.com/DumbNoxx/Goxe/internal/options"
+import "github.com/DumbNoxx/goxe/internal/options"
 
 // List of ignored words
 var Ignored = options.Config.PatternsWords

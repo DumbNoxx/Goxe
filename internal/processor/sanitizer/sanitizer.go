@@ -3,7 +3,7 @@ package sanitizer
 import (
 	"strings"
 
-	"github.com/DumbNoxx/Goxe/internal/processor/filters"
+	"github.com/DumbNoxx/goxe/internal/processor/filters"
 )
 
 // This function cleans the text by removing spaces and ignoring the words inside the filters

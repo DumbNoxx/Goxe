@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/DumbNoxx/Goxe/internal/options/logs"
+	"github.com/DumbNoxx/goxe/internal/options/logs"
 )
 
 func CacheDirGenerate() {
