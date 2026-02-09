@@ -3,7 +3,6 @@ package exporter
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/DumbNoxx/Goxe/internal/utils/colors"
 	logslevel "github.com/DumbNoxx/Goxe/internal/utils/logsLevel"
@@ -11,7 +10,7 @@ import (
 )
 
 // This function receives the map of logs created by the processor
-func Console(logs map[string]map[string]*pipelines.LogStats, mu *sync.Mutex, isFinal bool) {
+func Console(logs map[string]map[string]*pipelines.LogStats, isFinal bool) {
 
 	if isFinal {
 		fmt.Println(strings.ToUpper("\tFinal Report"))
@@ -19,9 +18,6 @@ func Console(logs map[string]map[string]*pipelines.LogStats, mu *sync.Mutex, isF
 		fmt.Println(strings.ToUpper("\tPartial Report"))
 	}
 	fmt.Println("----------------------------------")
-
-	mu.Lock()
-	defer mu.Unlock()
 
 	if len(logs) == 0 {
 		return
