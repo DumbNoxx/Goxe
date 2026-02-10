@@ -2,8 +2,6 @@ package sanitizer
 
 import (
 	"strings"
-
-	"github.com/DumbNoxx/goxe/internal/processor/filters"
 )
 
 // This function cleans the text by removing spaces and ignoring the words inside the filters
@@ -22,12 +20,6 @@ func Sanitizer(text string, idLog string) string {
 	textSanitize := strings.ToLower(infoWord)
 	infoText := reDates.ReplaceAllString(textSanitize, "")
 	cleanText := strings.TrimSpace(reStatus.ReplaceAllString(infoText, ""))
-
-	for _, word := range filters.Ignored {
-		if strings.Contains(word, cleanText) {
-			return ""
-		}
-	}
 
 	return ExtractLevelUpper(textSanitize) + cleanText
 }

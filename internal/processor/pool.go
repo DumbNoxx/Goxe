@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/DumbNoxx/goxe/internal/options"
 	burstdetection "github.com/DumbNoxx/goxe/internal/processor/burstDetection"
 	"github.com/DumbNoxx/goxe/internal/processor/cluster"
+	"github.com/DumbNoxx/goxe/internal/processor/filters"
 	"github.com/DumbNoxx/goxe/internal/processor/sanitizer"
 	"github.com/DumbNoxx/goxe/internal/utils"
 	"github.com/DumbNoxx/goxe/pkg/pipelines"
@@ -20,7 +22,17 @@ var (
 	logs       = make(map[string]map[string]*pipelines.LogStats, 100)
 	logsBurst  = make(map[string]*pipelines.LogBurst, 100)
 	timeReport = time.Duration(options.Config.ReportInterval * float64(time.Minute))
+	Str        *strings.Replacer
 )
+
+func init() {
+	listIgnored := make([]string, 0, len(options.Config.PatternsWords)*2)
+	for _, word := range filters.Ignored {
+		listIgnored = append(listIgnored, word)
+		listIgnored = append(listIgnored, "")
+	}
+	Str = strings.NewReplacer(listIgnored...)
+}
 
 // Main function that processes the received information and sends it to their corresponding functions
 func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
@@ -45,17 +57,7 @@ func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGr
 				return
 			}
 			buf := text.RawEntry
-			sanitizadedText = cluster.Cluster(text.Content, text.IdLog)
-			if len(sanitizadedText) < 3 {
-				text.Content = ""
-				text.IdLog = ""
-				text.Source = ""
-				text.Timestamp = time.Time{}
-				text.RawEntry = nil
-				pipelines.EntryPool.Put(text)
-				pipelines.BufferPool.Put(buf)
-				continue
-			}
+			sanitizadedText = cluster.Cluster(Str.Replace(text.Content), text.IdLog)
 			mu.Lock()
 			if logs[text.Source] == nil {
 				logs[text.Source] = make(map[string]*pipelines.LogStats)
