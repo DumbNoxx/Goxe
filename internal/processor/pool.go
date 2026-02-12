@@ -18,23 +18,26 @@ import (
 )
 
 var (
-	logs       = make(map[string]map[string]*pipelines.LogStats, 100)
-	logsBurst  = make(map[string]*pipelines.LogBurst, 100)
-	timeReport = time.Duration(options.Config.ReportInterval * float64(time.Minute))
-	logsToFile = make([]map[string]map[string]*pipelines.LogStats, 0)
+	logs             = make(map[string]map[string]*pipelines.LogStats, 100)
+	logsBurst        = make(map[string]*pipelines.LogBurst, 100)
+	TimeReport       time.Duration
+	logsToFile       = make([]map[string]map[string]*pipelines.LogStats, 0)
+	TickerReportFile *time.Ticker
+	Ticker           *time.Ticker
 )
 
 func init() {
 	filters.LoadFiltersWord()
+	TickerReportFile = time.NewTicker(utils.TimeReportFile)
+	TimeReport = time.Duration(options.Config.ReportInterval * float64(time.Minute))
+	Ticker = time.NewTicker(TimeReport)
 }
 
 // Main function that processes the received information and sends it to their corresponding functions
 func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGroup, mu *sync.Mutex) {
 	defer wg.Done()
-	ticker := time.NewTicker(timeReport)
-	defer ticker.Stop()
-	tickerReportFile := time.NewTicker(utils.TimeReportFile)
-	defer tickerReportFile.Stop()
+	defer Ticker.Stop()
+	defer TickerReportFile.Stop()
 
 	var sanitizadedText string
 
@@ -85,7 +88,8 @@ func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGr
 			text.RawEntry = nil
 			pipelines.EntryPool.Put(text)
 			pipelines.BufferPool.Put(buf)
-		case <-ticker.C:
+		case <-Ticker.C:
+			fmt.Println(utils.TimeReportFile)
 
 			if len(logs) <= 0 {
 				continue
@@ -103,7 +107,7 @@ func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGr
 			if err != nil {
 				log.Print("Error sent")
 			}
-		case <-tickerReportFile.C:
+		case <-TickerReportFile.C:
 			if !options.Config.GenerateLogsOptions.GenerateLogsFile {
 				continue
 			}
