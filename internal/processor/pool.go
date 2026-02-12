@@ -89,8 +89,6 @@ func Clean(ctx context.Context, pipe <-chan *pipelines.LogEntry, wg *sync.WaitGr
 			pipelines.EntryPool.Put(text)
 			pipelines.BufferPool.Put(buf)
 		case <-Ticker.C:
-			fmt.Println(utils.TimeReportFile)
-
 			if len(logs) <= 0 {
 				continue
 			}

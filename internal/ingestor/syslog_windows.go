@@ -1,3 +1,5 @@
+//go:build windows
+
 package ingestor
 
 import (
@@ -17,17 +19,16 @@ var (
 	PORT      string = ":" + strconv.Itoa(options.Config.Port)
 	lastIp    string
 	lastRawIp net.IP
+	Server    net.ListenConfig
 )
 
 func Udp(ctx context.Context, pipe chan<- *pipelines.LogEntry, wg *sync.WaitGroup) {
 	defer wg.Done()
-	addr, err := net.ResolveUDPAddr("udp", PORT)
-	if err != nil {
-		fmt.Println("Error resolving address:", err)
-		return
+	conn, err := Server.ListenPacket(ctx, "udp", PORT)
+
+	if udpConn, ok := conn.(*net.UDPConn); ok {
+		udpConn.SetReadBuffer(options.Config.BufferUdpSize * 1024 * 1024)
 	}
-	conn, err := net.ListenUDP("udp", addr)
-	conn.SetReadBuffer(options.Config.BufferUdpSize * 1024 * 1024)
 
 	if err != nil {
 		fmt.Println("Listening error:", err)
@@ -42,7 +43,7 @@ func Udp(ctx context.Context, pipe chan<- *pipelines.LogEntry, wg *sync.WaitGrou
 
 	for {
 		buffer := pipelines.BufferPool.Get().([]byte)
-		n, clientAddr, err := conn.ReadFromUDP(buffer)
+		n, clientAddr, err := conn.ReadFrom(buffer)
 
 		if err != nil {
 			if ctx.Err() != nil {
@@ -53,9 +54,11 @@ func Udp(ctx context.Context, pipe chan<- *pipelines.LogEntry, wg *sync.WaitGrou
 			continue
 		}
 
-		if !clientAddr.IP.Equal(lastRawIp) {
-			lastRawIp = clientAddr.IP
-			lastIp = clientAddr.IP.String()
+		if udpAddr, ok := clientAddr.(*net.UDPAddr); ok {
+			if !udpAddr.IP.Equal(lastRawIp) {
+				lastRawIp = udpAddr.IP
+				lastIp = udpAddr.IP.String()
+			}
 		}
 
 		dates := pipelines.EntryPool.Get().(*pipelines.LogEntry)

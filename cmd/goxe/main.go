@@ -9,10 +9,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/DumbNoxx/goxe/internal/ingestor"
@@ -27,11 +31,13 @@ import (
 
 var (
 	versionFlag *bool
+	isUpgrade   *bool
 	version     string
 )
 
 func init() {
 	versionFlag = flag.Bool("v", false, "")
+	isUpgrade = flag.Bool("is-upgrade", false, "Internal use for hot-swap")
 }
 
 func getVersion() string {
@@ -81,11 +87,35 @@ func viewConfig(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
+func getVersionLatest(req *http.Request, res *http.Response, ctx context.Context) (response pkg.ResponseGithubApi) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/DumbNoxx/goxe/releases/latest", nil)
+	if err != nil {
+		log.Println(err)
+	}
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		log.Printf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+	}
+	if err != nil {
+		log.Println(err)
+	}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		log.Println("failed to unmarshal github response:", err)
+	}
+	return response
+}
+
 func viewNewVersion(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var (
 		response       pkg.ResponseGithubApi
-		err            error
 		res            *http.Response
 		req            *http.Request
 		currentVersion = getVersion()
@@ -97,36 +127,11 @@ func viewNewVersion(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ticker.C:
-			req, err = http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/DumbNoxx/goxe/releases/latest", nil)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			res, err = http.DefaultClient.Do(req)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			res.Body.Close()
-
-			body, err := io.ReadAll(res.Body)
-			if res.StatusCode > 299 {
-				log.Printf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
-				continue
-			}
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			err = json.Unmarshal(body, &response)
-			if err != nil {
-				log.Println("failed to unmarshal github response:", err)
-				continue
-			}
+			version := getVersionLatest(req, res, ctx)
 			if currentVersion == "vDev-build" {
 				continue
 			}
-			if response.Tag_name == currentVersion {
+			if version.Tag_name == currentVersion {
 				continue
 			}
 
@@ -141,20 +146,135 @@ func viewNewVersion(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
+func autoUpdate(ctx context.Context) {
+	var (
+		req *http.Request
+		res *http.Response
+	)
+	currentLocation, err := os.Executable()
+	home, _ := os.UserHomeDir()
+	gopath := filepath.Join(home, "go")
+	version := getVersionLatest(req, res, ctx)
+	v := getVersion()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if version.Tag_name != v {
+		if v == "vDev-build" {
+			fmt.Println("[Test] Local build detected, recompiling...")
+			cmd := exec.Command("go", "build", "-o", currentLocation, "./cmd/goxe")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				log.Printf("Build failed: %v\n", err)
+				log.Printf("Compiler says: %s\n", string(output))
+				return
+			}
+			fmt.Printf("[System] My PID is %d. Launching V2...\n", os.Getpid())
+			newVersion := exec.Command(currentLocation, "-is-upgrade")
+			newVersion.Stdout = os.Stdout
+			newVersion.Stderr = os.Stderr
+			newVersion.Stdin = os.Stdin
+
+			err = newVersion.Start()
+			if err != nil {
+				log.Printf("Failed to start new Version: %v\n", err)
+				return
+			}
+			<-ctx.Done()
+			return
+		}
+		if strings.HasPrefix(currentLocation, gopath) {
+			cmd := exec.Command("go", "install", "github.com/DumbNoxx/goxe/cmd/goxe@latest")
+			err := cmd.Run()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
+		newVersion := exec.Command(currentLocation, "-is-upgrade")
+		newVersion.Stdin = os.Stdin
+		err := newVersion.Start()
+		if err != nil {
+			log.Printf("Failed to start new Version: %v\n", err)
+			return
+		}
+		<-ctx.Done()
+	}
+	if strings.HasPrefix(currentLocation, "/usr/bin/goxe") {
+		fmt.Println("Goxe was installed via a package manager. Please use your package manager to update it to avoid versioning conflicts.")
+	}
+}
+
 func main() {
 	flag.Parse()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 
 	if *versionFlag {
 		fmt.Println(getVersion())
 		os.Exit(0)
+	}
+	if *isUpgrade {
+		p, _ := os.FindProcess(os.Getppid())
+		p.Signal(syscall.SIGINT)
+	}
+	argMax := len(os.Args) - 1
+	arg := os.Args
+
+	if argMax > 1 {
+		log.Println("Too many arguments - Usage: [program] [arg]")
+		return
+	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGUSR1)
+
+	go func() {
+		for sig := range sigChan {
+			switch sig {
+			case syscall.SIGUSR1:
+				fmt.Println("\n[System] Update signal received! Starting auto-update...")
+				ticker := time.NewTicker(1 * time.Second)
+				count := 1
+				updateDone := false
+				defer ticker.Stop()
+				for !updateDone {
+					select {
+					case <-ticker.C:
+						if count != 5 {
+							fmt.Printf("%d..", count)
+						} else {
+							fmt.Printf("%d\n", count)
+						}
+						if count == 5 {
+							fmt.Println("Updating...")
+							autoUpdate(ctx)
+							updateDone = true
+						}
+						count++
+					case <-ctx.Done():
+						return
+					}
+
+				}
+				<-ctx.Done()
+				return
+			case os.Interrupt:
+				cancel()
+			}
+		}
+	}()
+
+	if slices.Contains(arg, "update") {
+		fmt.Println("Enviando orden de actualización a la instancia activa...")
+		cmd := exec.Command("pkill", "-SIGUSR1", "goxe")
+		cmd.Run()
+		return
 	}
 
 	var wgProcessor sync.WaitGroup
 	var wgProducer sync.WaitGroup
 	pipe := make(chan *pipelines.LogEntry, 100)
 	var mu sync.Mutex
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
 
 	options.CacheDirGenerate()
 
