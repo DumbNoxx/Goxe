@@ -265,7 +265,7 @@ func main() {
 	}()
 
 	if slices.Contains(arg, "update") {
-		fmt.Println("Enviando orden de actualización a la instancia activa...")
+		fmt.Println("Sending update signal to the active instance...")
 		cmd := exec.Command("pkill", "-SIGUSR1", "goxe")
 		cmd.Run()
 		return
