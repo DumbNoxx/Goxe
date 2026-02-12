@@ -19,6 +19,8 @@ import (
 	"github.com/DumbNoxx/goxe/internal/options"
 	"github.com/DumbNoxx/goxe/internal/processor"
 	"github.com/DumbNoxx/goxe/internal/processor/filters"
+	rTime "github.com/DumbNoxx/goxe/internal/processor/reportTime"
+	"github.com/DumbNoxx/goxe/internal/utils"
 	pkg "github.com/DumbNoxx/goxe/pkg/options"
 	"github.com/DumbNoxx/goxe/pkg/pipelines"
 )
@@ -68,6 +70,9 @@ func viewConfig(ctx context.Context, wg *sync.WaitGroup) {
 				fmt.Println("Config update, reload...")
 				lastModified = currentStat.ModTime()
 				options.Config = options.ConfigFile()
+				utils.TimeReportFile = utils.UserConfigHour()
+				rTime.GetReportFileTime()
+				rTime.GetReportPartialTime()
 				filters.LoadFiltersWord()
 			}
 		case <-ctx.Done():
