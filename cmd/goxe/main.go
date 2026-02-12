@@ -226,12 +226,12 @@ func main() {
 		return
 	}
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGUSR1)
+	signal.Notify(sigChan, watchSignals...)
 
 	go func() {
 		for sig := range sigChan {
-			switch sig {
-			case syscall.SIGUSR1:
+			if isUpdateSignal(sig) {
+
 				fmt.Println("\n[System] Update signal received! Starting auto-update...")
 				ticker := time.NewTicker(1 * time.Second)
 				count := 1
@@ -258,7 +258,8 @@ func main() {
 				}
 				<-ctx.Done()
 				return
-			case os.Interrupt:
+			}
+			if sig == os.Interrupt {
 				cancel()
 			}
 		}
