@@ -21,6 +21,14 @@ func main() {
 	arg := os.Args
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+	var (
+		stopChan    = make(chan os.Signal, 1)
+		pipe        = make(chan *pipelines.LogEntry, 100)
+		wgProcessor sync.WaitGroup
+		wgProducer  sync.WaitGroup
+		mu          sync.Mutex
+		once        sync.Once
+	)
 
 	switch {
 	case slices.Contains(arg, "update"):
@@ -34,21 +42,19 @@ func main() {
 		}
 		updateArg()
 		os.Exit(0)
+	case *flagRouteFile:
+		err := brewFlag(&mu)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(0)
+		}
+		os.Exit(0)
 	case versionFlag:
 		fmt.Println(getVersion())
 		os.Exit(0)
 	case *isUpgrade:
 		fmt.Println("[System] Goxe updated")
 	}
-
-	var (
-		stopChan    = make(chan os.Signal, 1)
-		pipe        = make(chan *pipelines.LogEntry, 100)
-		wgProcessor sync.WaitGroup
-		wgProducer  sync.WaitGroup
-		mu          sync.Mutex
-		once        sync.Once
-	)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, watchSignals...)
