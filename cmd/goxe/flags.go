@@ -3,21 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"os/exec"
-)
+	"sync"
 
-var (
-	versionFlag bool
-	isUpgrade   *bool
-	routeFile   string
-	version     string
+	"github.com/DumbNoxx/goxe/internal/processor"
 )
 
 func init() {
-	flag.BoolVar(&versionFlag, "v", false, "show program version")
-	flag.BoolVar(&versionFlag, "version", false, "show program version")
+	flag.BoolVar(&versionFlag, "v", false, "Show program version")
+	flag.BoolVar(&versionFlag, "version", false, "Show program version")
 	isUpgrade = flag.Bool("is-upgrade", false, "Internal use for hot-swap")
+	flag.BoolVar(&flagRouteFile, "brew", false, "Distill and normalize a raw log file into a structured report")
+	flag.BoolVar(&flagRouteFile, "b", false, "Distill and normalize a raw log file into a structured report")
 }
+
+var (
+	versionFlag   bool
+	isUpgrade     *bool
+	flagRouteFile bool
+	routeFile     string
+	version       string
+)
 
 func updateArg() {
 	fmt.Println("Sending update signal to the active instance...")
@@ -25,7 +32,15 @@ func updateArg() {
 	cmd.Run()
 }
 
-func brewFlag() {
+func brewFlag(wg *sync.Mutex) error {
 	routeFile = flag.Arg(0)
-	fmt.Println(routeFile)
+	idLog := flag.Arg(1)
+	file, err := os.Open(routeFile)
+	if os.IsNotExist(err) {
+		return err
+	}
+	defer file.Close()
+	processor.CleanFile(file, idLog, wg, routeFile)
+
+	return nil
 }
