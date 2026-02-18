@@ -11,16 +11,17 @@ import (
 )
 
 func init() {
-	flag.BoolVar(&versionFlag, "v", false, "show program version")
-	flag.BoolVar(&versionFlag, "version", false, "show program version")
+	flag.BoolVar(&versionFlag, "v", false, "Show program version")
+	flag.BoolVar(&versionFlag, "version", false, "Show program version")
 	isUpgrade = flag.Bool("is-upgrade", false, "Internal use for hot-swap")
-	flagRouteFile = flag.Bool("brew", false, "Analiza un archivo y lo normaliza")
+	flag.BoolVar(&flagRouteFile, "brew", false, "Distill and normalize a raw log file into a structured report")
+	flag.BoolVar(&flagRouteFile, "b", false, "Distill and normalize a raw log file into a structured report")
 }
 
 var (
 	versionFlag   bool
 	isUpgrade     *bool
-	flagRouteFile *bool
+	flagRouteFile bool
 	routeFile     string
 	version       string
 )

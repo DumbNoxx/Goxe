@@ -14,6 +14,49 @@ import (
 	"github.com/DumbNoxx/goxe/pkg/pipelines"
 )
 
+// CleanFile processes a log file line by line, applying sanitization and clustering,
+// accumulating statistics, and sending them to exporters (ShipLogs and FileReader).
+//
+// Parameters:
+//
+//   - file: pointer to the opened file to be read.
+//   - idLog: log identifier (passed to cluster.Cluster).
+//   - mu: mutex (maintained for consistency with other signatures, though logsFile is local).
+//   - routeFile: path of the original file (passed to exporter.FileReader for reference).
+//
+// The function performs:
+//
+//   - Initializes a local map 'logsFile' to accumulate statistics under the "file-reader" source.
+//
+//   - Creates a bufio.Scanner to read the file line by line.
+//
+//   - For each line:
+//
+//     -Reads line bytes.
+//
+//     -Calls cluster.Cluster(data, idLog) to obtain sanitized and grouped text.
+//
+//     -Converts the result to a string using 'unsafe' (zero-copy) and assigns it to sanitizedText.
+//
+//     -Acquires the mutex (kept for structural consistency).
+//
+//     -Initializes the entry in logsFile["file-reader"] if necessary.
+//
+//     -Extracts the log level using sanitizer.ExtractLevelUpper(data) and converts it to string via 'unsafe'.
+//
+//     -If the sanitized message is new, creates an entry in logsFile with initial statistics.
+//
+//     -Increments the counter and updates LastSeen.
+//
+//     -Releases the mutex.
+//
+//   - After reaching EOF, calls exporter.ShipLogs(logsFile) to send logs to the remote shipper.
+//
+//   - Calls exporter.FileReader(logsFile, routeFile) to save the report to a file.
+//
+//   - Checks for scanner errors via scanner.Err() and terminates with log.Fatal if found.
+//
+//   - Clears the logsFile map using 'clear()' to free memory.
 func CleanFile(file *os.File, idLog string, mu *sync.Mutex, routeFile string) {
 	var (
 		sanitizadedText string

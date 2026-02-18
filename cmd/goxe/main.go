@@ -42,7 +42,7 @@ func main() {
 		}
 		updateArg()
 		os.Exit(0)
-	case *flagRouteFile:
+	case flagRouteFile:
 		err := brewFlag(&mu)
 		if err != nil {
 			fmt.Println(err)
