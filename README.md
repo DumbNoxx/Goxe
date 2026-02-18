@@ -71,7 +71,7 @@ visit our [official documentation](https://dumbnoxx.github.io/goxe-doc/)
 2. implement change
 3. open pr
 
-please include tests and a concise description of the change.
+please read [CONTRIBUTING](./CONTRIBUTING.md).
 
 ## maintainers
 

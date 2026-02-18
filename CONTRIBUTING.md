@@ -24,8 +24,6 @@ this executes:
 ```bash
 go build -o bin/goxe ./cmd/goxe 
 ```
-```
-```
 
 if you don't use task, run the command directly.
 
